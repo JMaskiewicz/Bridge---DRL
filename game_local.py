@@ -1,5 +1,12 @@
 import random
 
+'''
+quarterback - one player that won bidding and will play the hand
+partner - the player sitting opposite the quarterback
+defenders 1 - the other who will play against the quarterback and have Whist lead
+defenders 2 - the other who will play against the quarterback and have second lead
+'''
+
 # Constants
 SUITS = ['C', 'D', 'H', 'S']  # Clubs, Diamonds, Hearts, Spades
 RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
@@ -95,7 +102,8 @@ class Trick:
             if card.suit == trump_suit:
                 if winning_card[1].suit != trump_suit or RANKS.index(card.rank) > RANKS.index(winning_card[1].rank):
                     winning_card = (player, card)
-            elif card.suit == leading_suit and (winning_card[1].suit != trump_suit) and RANKS.index(card.rank) > RANKS.index(winning_card[1].rank):
+            elif card.suit == leading_suit and (winning_card[1].suit != trump_suit) and RANKS.index(
+                    card.rank) > RANKS.index(winning_card[1].rank):
                 winning_card = (player, card)
         return winning_card[0]
 
@@ -137,19 +145,21 @@ class GameLogic:
             return False
         return True
 
-    def play_card(self, player, card):
+    def play_card(self, player, card_str):
+        card_obj = next((c for c in player.hand if str(c) == card_str), None)
+        if not card_obj:
+            print("Invalid card. Try again.")
+            return False
+
         # Check if the player follows the lead suit if possible
         if self.tricks and self.tricks[-1].cards:
             leading_suit = self.tricks[-1].cards[0][1].suit
-            if any(c.suit == leading_suit for c in player.hand) and card.suit != leading_suit:
+            if any(c.suit == leading_suit for c in player.hand) and card_obj.suit != leading_suit:
                 print(f"You must follow suit with {leading_suit} if you have one.")
                 return False
-        for p_card in player.hand:
-            if str(p_card) == card:
-                self.tricks[-1].play_card(player, player.play_card(p_card))
-                return True
-        print("Invalid card. Try again.")
-        return False
+
+        self.tricks[-1].play_card(player, player.play_card(card_obj))
+        return True
 
     def set_trump_and_declarer(self):
         if self.bidding.current_highest_bid:
@@ -161,6 +171,12 @@ class GameLogic:
         for i, player in enumerate(self.players):
             if player == self.bidding.declarer:
                 self.current_player_index = (i + 1) % 4
+                break
+
+    def set_current_player_to_winner(self, winner):
+        for i, player in enumerate(self.players):
+            if player == winner:
+                self.current_player_index = i
                 break
 
 def main():
@@ -200,6 +216,14 @@ def main():
                 current_player = game.get_current_player()
                 print(f"{current_player.name}'s turn to play.")
                 print(f"Your hand: {current_player.show_hand()}")
+
+                if game.tricks[-1].cards:
+                    leading_suit = game.tricks[-1].cards[0][1].suit
+                    print(f"Current leading suit: {leading_suit}")
+                else:
+                    leading_suit = None
+                    print("No leading suit, you can play any card.")
+
                 card = input("Enter the card to play (e.g., '2C'): ").strip().upper()
                 if game.play_card(current_player, card):
                     game.next_turn()
@@ -211,6 +235,8 @@ def main():
                 game.tricks_won[1] += 1
             else:
                 game.tricks_won[2] += 1
+
+            game.set_current_player_to_winner(trick_winner)
 
         print("Game over!")
         for player in game.players:
@@ -233,6 +259,7 @@ def main():
                 print("Declarer's team failed to fulfill the contract.")
     else:
         print("No valid contract was made. The game ends with no contract.")
+
 
 if __name__ == "__main__":
     main()
